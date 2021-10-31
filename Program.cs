@@ -120,7 +120,7 @@ namespace ATM
 
         public void CreateClient()
         {
-            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked)";
+            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked', 'nbrTries') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked, @nbrTries)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
@@ -146,16 +146,21 @@ namespace ATM
             string MainCurrency = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@MainCurrency", MainCurrency);
 
-            Console.Write("Do you want this account to be blocked ? Enter 1 if yes and enter 0 if no.");
-            int isBlocked = Convert.ToInt32(Console.ReadLine());
+            //we assume that we don't block a brand new client from the start: all clients start off as not blocked
+            //false: not blocked; true: blocked
+            bool isBlocked = false;
             myCommand.Parameters.AddWithValue("@isBlocked", isBlocked);
+
+            //we initialize the number of tries as 0
+            int nbrTries = 0;
+            myCommand.Parameters.AddWithValue("nbrTries", nbrTries);            
 
             var result = myCommand.ExecuteNonQuery();
 
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            //Console.WriteLine("Rows added: {0}", result);
+            Console.WriteLine("Rows added: {0}", result);
         }
 
         public void DeleteClient()
@@ -211,10 +216,41 @@ namespace ATM
 
         public void ResetTries()
         {
+            databaseObject.OpenConnection();
 
+            Console.Write("Enter the GUID of the client you wish to rest the tries for: ");
+            string GUIDtoResetTries = Console.ReadLine();
+
+            string query = "UPDATE clients SET nbrTries=0 WHERE GUID='" + GUIDtoResetTries + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
         }
 
         public void ChangePIN() {
+            databaseObject.OpenConnection();
+
+            Console.Write("Enter the GUID of the client you wish to change the PIN of: ");
+            string GUIDtoChangePIN = Console.ReadLine();
+            Console.Write("Enter the new PIN: ");
+            int newPIN = Convert.ToInt32(Console.ReadLine());
+
+            string query = "UPDATE clients SET PIN='" + newPIN + "' WHERE GUID= '" + GUIDtoChangePIN + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
         }
 
         public void VerifyTransactions()
@@ -223,33 +259,25 @@ namespace ATM
             //if verified : bool true ; if not verified : bool false
         }
 
-        /*
+        
         public void BlockClient()
         {
-            string query = "UPDATE clients SET isBlocked WHERE ID = 1";
-
             databaseObject.OpenConnection();
 
             Console.WriteLine("Please enter the GUID of the client you would block: ");
-            string GUIDClient = Console.ReadLine();
+            string GUIDtoBlock = Console.ReadLine();
 
+            string query = "UPDATE clients SET isBlocked=1 WHERE GUID= '" + GUIDtoBlock + "'";
 
-            if (isBlocked == 1)
-            {
-                Console.WriteLine("This client is already blocked.");
-            }
-            else
-            {
-                SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
-                Console.WriteLine("Client has been blocked.");
-            }
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
-            databaseObject.CloseConnection();
+            var result = myCommand.ExecuteNonQuery();
 
             //check that the value has been correctly added :
-            //Console.WriteLine("Rows added: {0}", result);
+            Console.WriteLine("Rows updated: {0}", result);
 
-        }*/
+            databaseObject.CloseConnection();
+        }
 
         public void UnblockClient()
         {
