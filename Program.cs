@@ -231,6 +231,7 @@ namespace ATM
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
+            AdminMenu();
         }
 
         public void ChangePIN() {
@@ -251,6 +252,8 @@ namespace ATM
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
+
+            AdminMenu();
         }
 
         public void VerifyTransactions()
@@ -259,12 +262,11 @@ namespace ATM
             //if verified : bool true ; if not verified : bool false
         }
 
-        
         public void BlockClient()
         {
             databaseObject.OpenConnection();
 
-            Console.WriteLine("Please enter the GUID of the client you would block: ");
+            Console.WriteLine("Please enter the GUID of the client you wish to block: ");
             string GUIDtoBlock = Console.ReadLine();
 
             string query = "UPDATE clients SET isBlocked=1 WHERE GUID= '" + GUIDtoBlock + "'";
@@ -277,16 +279,27 @@ namespace ATM
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
+            AdminMenu();
         }
 
         public void UnblockClient()
         {
+            databaseObject.OpenConnection();
 
-        }
+            Console.WriteLine("Please enter the GUID of the client you wish to unblock: ");
+            string GUIDtoUnblock = Console.ReadLine();
 
-        public void ChangePin()
-        {
+            string query = "UPDATE clients SET isBlocked=0 WHERE GUID= '" + GUIDtoUnblock + "'";
 
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
+            AdminMenu();
         }
 
         public void GetAll()
@@ -318,7 +331,37 @@ namespace ATM
 
         /* --- CLIENT --- */
 
-        public void ClientMenu()
+        private void LogInClient()
+        {
+            databaseObject.OpenConnection();
+
+            Console.WriteLine("Please enter your GUID: ");
+            string GUIDClient = Console.ReadLine();
+            Console.WriteLine("Please enter your PIN: ");
+            string PINClient = Console.ReadLine();
+
+            string query = "SELECT count(1) FROM clients WHERE GUID='" + GUIDClient + "' AND PIN='" + PINClient + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows selected: {0}", result);
+
+            if (result == 1)
+            {
+                ClientMenu(GUIDClient);
+            }
+            else
+            {
+                Console.WriteLine("Please try again");
+                LogInClient();
+            }
+            databaseObject.CloseConnection();
+        }
+
+        public void ClientMenu(string GUIDClient)
         {
             Console.Clear();
             Console.BackgroundColor = ConsoleColor.DarkBlue;
@@ -326,9 +369,11 @@ namespace ATM
             Console.WriteLine("|{0}|", AlignText(0, ""));
             Console.WriteLine("|{0}|", AlignText(37, "1. Deposit Money"));
             Console.WriteLine("|{0}|", AlignText(37, "2. Withdraw Money"));
-            Console.WriteLine("|{0}|", AlignText(37, "3. Tranfer Money"));
-            Console.WriteLine("|{0}|", AlignText(37, "4. Show My Account Details"));
-            Console.WriteLine("|{0}|", AlignText(37, "5. Logout"));
+            Console.WriteLine("|{0}|", AlignText(37, "3. View total amount"));
+            Console.WriteLine("|{0}|", AlignText(37, "4. Change PIN"));
+            Console.WriteLine("|{0}|", AlignText(37, "5. Change currency"));
+            Console.WriteLine("|{0}|", AlignText(37, "6. Show My Account Details"));
+            Console.WriteLine("|{0}|", AlignText(37, "7. Logout"));
             Console.WriteLine("|{0}|", AlignText(0, ""));
             DrawLine();
             Console.BackgroundColor = ConsoleColor.Black;
@@ -337,18 +382,24 @@ namespace ATM
             switch (choice)
             {
                 case 1:
-                    MakeTransaction();
+                    DepositMoney(GUIDClient);
                     break;
                 case 2:
-                    MakeTransaction();
+                    WithdrawMoney(GUIDClient);
                     break;
                 case 3:
-                    MakeTransaction();
+                    ViewTotalMoney(GUIDClient);
                     break;
                 case 4:
-                    AboutClient();
+                    ChangePINClient(GUIDClient);
                     break;
                 case 5:
+                    ChangeCurrency(GUIDClient);
+                    break;
+                case 6:
+                    AboutClient(GUIDClient);
+                    break;
+                case 7:
                     LogOutClient();
                     break;
                 default:
@@ -357,49 +408,97 @@ namespace ATM
             }
         }
 
-        private void LogInClient()
+        private void DepositMoney(string GUIDClient)
         {
-            //check GUID + PIN
-        }
-
-        private void MakeTransaction()
-        {
-            // TODO: check the connection of the client to get the ID of which client is making the connexion
-            // TODO: check that client isn't blocked. if blocked: no transaction, if not blocked, transaction
-            string query = "INSERT INTO transactions ('type', 'date', 'idClient', 'currency', 'amount') VALUES (@type, @date, @idClient,@currency, @amount)";
-
-            SQLiteCommand myCommand = new(query, databaseObject.myConnection);
-
             databaseObject.OpenConnection();
 
-            //TODO: get idClient with the client login : as the client is logged in, no need to ask for the PIN
+            Console.WriteLine("Please enter the amount of money you would like to deposit: ");
+            double amountToDeposit = double.Parse(Console.ReadLine());
 
-            Console.Write("Enter the type of the transaction by writing it down:");
-            string type = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@type", type);
+            string query = "UPDATE clients SET moneyAmount=moneyAmount+'" + amountToDeposit + "' WHERE GUID= '" + GUIDClient + "'";
 
-            string date = DateTime.Now.ToString("d/MM/yyyy");
-            myCommand.Parameters.AddWithValue("@date", date);
-
-            Console.Write("Enter the currency of the transaction by writing it down:");
-            string currency = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@type", currency);
-
-            Console.Write("Enter the amount of the transaction:");
-            int amount = Convert.ToInt32(Console.ReadLine());
-            myCommand.Parameters.AddWithValue("@MainCurrency", amount);
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
             var result = myCommand.ExecuteNonQuery();
 
-            databaseObject.CloseConnection();
-
             //check that the value has been correctly added :
-            Console.WriteLine("Rows added: {0}", result);
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
         }
 
-        private void AboutClient()
+        private void WithdrawMoney(string GUIDClient)
         {
+            databaseObject.OpenConnection();
 
+            Console.WriteLine("Please enter the amount of money you would like to withdraw: ");
+            double amountToWithdraw = double.Parse(Console.ReadLine());
+
+            string query = "UPDATE clients SET moneyAmount=moneyAmount-'" + amountToWithdraw + "' WHERE GUID= '" + GUIDClient + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
+        }
+
+        private void ViewTotalMoney(string GUIDClient)
+        {
+            databaseObject.OpenConnection();
+
+            string queryAmount = "SELECT moneyAmount FROM clients WHERE GUID='" + GUIDClient + "'";
+            string queryCurrency = "SELECT currency FROM clients WHERE GUID='" + GUIDClient + "'";
+
+            SQLiteCommand myCommandAmount = new SQLiteCommand(queryAmount, databaseObject.myConnection);
+            SQLiteCommand myCommandCurrency = new SQLiteCommand(queryCurrency, databaseObject.myConnection);
+
+            string totalAmount = myCommandAmount.ExecuteScalar().ToString();
+            string currency = myCommandCurrency.ExecuteScalar().ToString();
+            Console.WriteLine("The total amount in your account is: {0}{1}", totalAmount, currency);
+
+            databaseObject.CloseConnection();
+        }
+
+        private void ChangePINClient(string GUIDClient)
+        {
+            databaseObject.OpenConnection();
+
+            Console.WriteLine("Please enter the new PIN: ");
+            double newPIN = double.Parse(Console.ReadLine());
+
+            string query = "UPDATE clients SET PIN='" + newPIN + "' WHERE GUID= '" + GUIDClient + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows updated: {0}", result);
+
+            databaseObject.CloseConnection();
+        }
+
+        private void ChangeCurrency(string GUIDClient)
+        {
+            //TODO: add currency array in clients
+        }
+
+        private void AboutClient(string GUIDClient)
+        {
+            databaseObject.OpenConnection();
+
+            string query = "SELECT GUID, FirstName, LastName, MainCurrency FROM clients WHERE GUID= '" + GUIDClient + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteScalar().ToString();
+            Console.WriteLine("Your credentials are the following: {0}", result);
+
+            databaseObject.CloseConnection();
         }
 
         private void LogOutClient()
@@ -439,6 +538,7 @@ namespace ATM
             Console.WriteLine("|{0}|", AlignText(0, ""));
             Console.WriteLine("|{0}|", AlignText(34, "Florent, Quentin and Chloé's ATM System"));
             Console.WriteLine("|{0}|", AlignText(35, "Developed for Intégration de systèmes : Fondamentaux"));
+            Console.WriteLine("|{0}|", AlignText(35, "Teacher: Mikael CHAAYA"));
             Console.WriteLine("|{0}|", AlignText(0, ""));
             DrawLine();
             Console.BackgroundColor = ConsoleColor.Black;
