@@ -15,7 +15,7 @@ namespace ATM
         public void MainMenu()
         {
             Console.Clear();
-            Center("**** Welcome to GTBPI Banking System ****\n");
+            Center("**** Welcome to FQC ATM System ****\n");
             Console.BackgroundColor = ConsoleColor.DarkBlue;
             DrawLine();
             Console.WriteLine("|{0}|", AlignText(0, ""));
@@ -60,10 +60,11 @@ namespace ATM
             DrawLine();
             Console.WriteLine("|{0}|", AlignText(0, ""));
             Console.WriteLine("|{0}|", AlignText(37, "1. Create a client"));
-            Console.WriteLine("|{0}|", AlignText(37, "2. Manage a client"));
-            Console.WriteLine("|{0}|", AlignText(37, "3. Verify user transactions"));
-            Console.WriteLine("|{0}|", AlignText(37, "4. View all clients"));
-            Console.WriteLine("|{0}|", AlignText(37, "5. Logout"));
+            Console.WriteLine("|{0}|", AlignText(37, "2. Delete a client"));
+            Console.WriteLine("|{0}|", AlignText(37, "3. Manage a client (reset tries or change a client's PIN)"));
+            Console.WriteLine("|{0}|", AlignText(37, "4. Verify user transactions"));
+            Console.WriteLine("|{0}|", AlignText(37, "6. View all clients"));
+            Console.WriteLine("|{0}|", AlignText(37, "6. Logout"));
             Console.WriteLine("|{0}|", AlignText(0, ""));
             DrawLine();
             Console.BackgroundColor = ConsoleColor.Black;
@@ -78,10 +79,10 @@ namespace ATM
                         CreateClient();
                         break;
                     case 2:
-                        ManageClient();
+                        DeleteClient();
                         break;
                     case 3:
-                        VerifyTransactions();
+                        ManageClient();
                         break;
                     case 4:
                         GetAll();
@@ -113,23 +114,13 @@ namespace ATM
             else
             {
                 Console.WriteLine("Please Try again");
+                LogInAdmin();
             }
         }
 
-        public void ManageClient()
-        {
-            //change data in database
-            //update function
-        }
-
-        public void VerifyTransactions()
-        {
-            //change value in the transactions database
-            //if verified : bool true ; if not verified : bool false
-        }
         public void CreateClient()
         {
-            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, '@isBlocked')";
+            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
@@ -164,13 +155,101 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows added: {0}", result);
+            //Console.WriteLine("Rows added: {0}", result);
         }
 
-        public void BlockClient()
+        public void DeleteClient()
+        {
+            databaseObject.OpenConnection();
+
+            Console.Write("Enter the GUID of the client you wish to remove from the database:");
+            string GUIDtodelete = Console.ReadLine();
+
+            string query = "DELETE FROM clients WHERE GUID='" + GUIDtodelete + "'";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            var result = myCommand.ExecuteNonQuery();
+
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows deleted: {0}", result);
+
+            databaseObject.CloseConnection();
+        }
+
+        public void ManageClient()
+        {
+            //TODO: menu to select if admin wants to reset tries or change PIN
+            Console.WriteLine("|{0}|", AlignText(0, ""));
+            Console.WriteLine("|{0}|", AlignText(37, "Please choose what you want to do:"));
+            Console.WriteLine("|{0}|", AlignText(37, "1. Reset tries for a client"));
+            Console.WriteLine("|{0}|", AlignText(37, "2. Change PIN for a client"));
+            Console.WriteLine("|{0}|", AlignText(0, ""));
+            DrawLine();
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.Write("\n{0}", AlignText(38, "Enter your choice : ", "L"));
+            int choice = Convert.ToInt32(Console.ReadLine());
+
+            while (true)
+            {
+                switch (choice)
+                {
+                    case 1:
+                        ResetTries();
+                        break;
+                    case 2:
+                        ChangePIN();
+                        break;
+                    default:
+                        Console.WriteLine("Incorrect choice, please try again.");
+                        break;
+                }
+                Console.ReadKey();
+                Console.Clear();
+            }
+        }
+
+        public void ResetTries()
         {
 
         }
+
+        public void ChangePIN() {
+        }
+
+        public void VerifyTransactions()
+        {
+            //change value in the transactions database
+            //if verified : bool true ; if not verified : bool false
+        }
+
+        /*
+        public void BlockClient()
+        {
+            string query = "UPDATE clients SET isBlocked WHERE ID = 1";
+
+            databaseObject.OpenConnection();
+
+            Console.WriteLine("Please enter the GUID of the client you would block: ");
+            string GUIDClient = Console.ReadLine();
+
+
+            if (isBlocked == 1)
+            {
+                Console.WriteLine("This client is already blocked.");
+            }
+            else
+            {
+                SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+                Console.WriteLine("Client has been blocked.");
+            }
+
+            databaseObject.CloseConnection();
+
+            //check that the value has been correctly added :
+            //Console.WriteLine("Rows added: {0}", result);
+
+        }*/
 
         public void UnblockClient()
         {
@@ -181,8 +260,6 @@ namespace ATM
         {
 
         }
-
-        
 
         public void GetAll()
         {
@@ -259,35 +336,30 @@ namespace ATM
 
         private void MakeTransaction()
         {
-            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, '@isBlocked')";
+            // TODO: check the connection of the client to get the ID of which client is making the connexion
+            // TODO: check that client isn't blocked. if blocked: no transaction, if not blocked, transaction
+            string query = "INSERT INTO transactions ('type', 'date', 'idClient', 'currency', 'amount') VALUES (@type, @date, @idClient,@currency, @amount)";
 
-            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+            SQLiteCommand myCommand = new(query, databaseObject.myConnection);
 
             databaseObject.OpenConnection();
 
-            Console.Write("Enter the GUID of the client:");
-            string GUIDClient = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@GUID", GUIDClient);
+            //TODO: get idClient with the client login : as the client is logged in, no need to ask for the PIN
 
-            Console.Write("Enter the First Name of the client:");
-            string FirstName = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@FirstName", FirstName);
+            Console.Write("Enter the type of the transaction by writing it down:");
+            string type = Console.ReadLine();
+            myCommand.Parameters.AddWithValue("@type", type);
 
-            Console.Write("Enter the Last Name of the client:");
-            string LastName = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@LastName", LastName);
+            string date = DateTime.Now.ToString("d/MM/yyyy");
+            myCommand.Parameters.AddWithValue("@date", date);
 
-            Console.Write("Enter the PIN of the client:");
-            string PINClient = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@PIN", PINClient);
+            Console.Write("Enter the currency of the transaction by writing it down:");
+            string currency = Console.ReadLine();
+            myCommand.Parameters.AddWithValue("@type", currency);
 
-            Console.Write("Enter the Main Currency of the client:");
-            string MainCurrency = Console.ReadLine();
-            myCommand.Parameters.AddWithValue("@MainCurrency", MainCurrency);
-
-            Console.Write("Do you want this account to be blocked ? Enter 1 if yes and enter 0 if no.");
-            int isBlocked = Convert.ToInt32(Console.ReadLine());
-            myCommand.Parameters.AddWithValue("@isBlocked", isBlocked);
+            Console.Write("Enter the amount of the transaction:");
+            int amount = Convert.ToInt32(Console.ReadLine());
+            myCommand.Parameters.AddWithValue("@MainCurrency", amount);
 
             var result = myCommand.ExecuteNonQuery();
 
