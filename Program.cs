@@ -17,20 +17,27 @@ namespace ATM
             try
             {
 
-                Console.Clear();
-                Center("**** Welcome to FQC ATM System ****\n");
-                Console.BackgroundColor = ConsoleColor.DarkBlue;
-                DrawLine();
-                Console.WriteLine("|{0}|", AlignText(0, ""));
-                Console.WriteLine("|{0}|", AlignText(35, "1. Log In as Admin"));
-                Console.WriteLine("|{0}|", AlignText(35, "2. Log In as Client"));
-                Console.WriteLine("|{0}|", AlignText(35, "3. Exit"));
-                Console.WriteLine("|{0}|", AlignText(35, "4. About Us"));
-                Console.WriteLine("|{0}|", AlignText(0, ""));
-                DrawLine();
-                Console.BackgroundColor = ConsoleColor.Black;
-                Console.Write("\n{0}", AlignText(36, "Enter your choice : ", "L"));
-                int choice = Convert.ToInt32(Console.ReadLine());
+        /* --- ADMIN --- */
+        public void AdminMenu()
+        {
+            //Console.Clear();
+            Console.BackgroundColor = ConsoleColor.DarkBlue;
+            DrawLine();
+            Console.WriteLine("|{0}|", AlignText(0, ""));
+            Console.WriteLine("|{0}|", AlignText(37, "1. Create a client"));
+            Console.WriteLine("|{0}|", AlignText(37, "2. Delete a client"));
+            Console.WriteLine("|{0}|", AlignText(37, "3. Manage a client (reset tries or change a client's PIN)"));
+            Console.WriteLine("|{0}|", AlignText(37, "4. Verify user transactions"));
+            Console.WriteLine("|{0}|", AlignText(37, "5. View all clients"));
+            Console.WriteLine("|{0}|", AlignText(37, "6. Logout"));
+            Console.WriteLine("|{0}|", AlignText(0, ""));
+            DrawLine();
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.Write("\n{0}", AlignText(38, "Enter your choice : ", "L"));
+            int choice = Convert.ToInt32(Console.ReadLine());
+
+            while (true)
+            {
                 switch (choice)
                 {
                     case 1:
@@ -43,14 +50,17 @@ namespace ATM
                         About();
                         break;
                     case 4:
-                        Console.WriteLine("\n");
-                        Center("Thanks for using our service!");
-                        Center("Press any key to close the console.");
-                        Console.ReadKey();
-                        Environment.Exit(0);
+                        VerifyTransactions();
+                        break;
+                    case 5:
+                        GetAll();
+                        break;
+                    case 6:
+                        LogOutAdmin();
                         break;
                     default:
                         Console.WriteLine("Incorrect choice, please try again.");
+                        AdminMenu();
                         break;
                 }
             }
@@ -144,9 +154,7 @@ namespace ATM
 
         public void CreateClient()
         {
-            try
-            {
-                string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked', 'nbrTries') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked, @nbrTries)";
+            string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked', 'nbrTries', 'moneyAmount') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked, @nbrTries, @moneyAmount)";
 
                 SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
@@ -177,22 +185,22 @@ namespace ATM
                 bool isBlocked = false;
                 myCommand.Parameters.AddWithValue("@isBlocked", isBlocked);
 
-                //we initialize the number of tries as 0
-                int nbrTries = 0;
-                myCommand.Parameters.AddWithValue("nbrTries", nbrTries);
+            //we initialize the number of tries as 0
+            int nbrTries = 0;
+            myCommand.Parameters.AddWithValue("nbrTries", nbrTries);
 
-                var result = myCommand.ExecuteNonQuery();
+            //we initialize the moneyAmount to 0
+            int moneyAmount = 0;
+            myCommand.Parameters.AddWithValue("moneyAmount", moneyAmount);
+
+            var result = myCommand.ExecuteNonQuery();
 
                 databaseObject.CloseConnection();
 
-                //check that the value has been correctly added :
-                Console.WriteLine("Rows added: {0}", result);
-            }
+            //check that the value has been correctly added :
+            Console.WriteLine("Rows added: {0}", result);
 
-            catch (Exception)
-            {
-                CreateClient();
-            }
+            AdminMenu();
         }
 
 
@@ -211,16 +219,12 @@ namespace ATM
 
                 var result = myCommand.ExecuteNonQuery();
 
-                //check that the value has been correctly added :
-                Console.WriteLine("Rows deleted: {0}", result);
+            //check that the value has been correctly deleted :
+            Console.WriteLine("Rows deleted: {0}", result);
 
-                databaseObject.CloseConnection();
-            }
+            databaseObject.CloseConnection();
 
-            catch (Exception)
-            {
-                DeleteClient();
-            }
+            AdminMenu();
         }
 
         public void ManageClient()
@@ -240,21 +244,18 @@ namespace ATM
 
                 while (true)
                 {
-                    switch (choice)
-                    {
-                        case 1:
-                            ResetTries();
-                            break;
-                        case 2:
-                            ChangePIN();
-                            break;
-                        default:
-                            Console.WriteLine("Incorrect choice, please try again.");
-                            break;
-                    }
-                    Console.ReadKey();
-                    Console.Clear();
+                    case 1:
+                        ResetTries();
+                        break;
+                    case 2:
+                        ChangePIN();
+                        break;
+                    default:
+                        Console.WriteLine("Incorrect choice, please try again.");
+                        ManageClient();
+                        break;
                 }
+                Console.ReadKey();
             }
 
             catch (Exception)
@@ -277,8 +278,8 @@ namespace ATM
 
                 var result = myCommand.ExecuteNonQuery();
 
-                //check that the value has been correctly added :
-                Console.WriteLine("Rows updated: {0}", result);
+            //check that the value has been correctly updated :
+            Console.WriteLine("Rows updated: {0}", result);
 
                 databaseObject.CloseConnection();
                 AdminMenu();
@@ -305,7 +306,8 @@ namespace ATM
 
                 SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
-                var result = myCommand.ExecuteNonQuery();
+            //check that the value has been correctly updated :
+            Console.WriteLine("Rows updated: {0}", result);
 
                 //check that the value has been correctly added :
                 Console.WriteLine("Rows updated: {0}", result);
@@ -342,8 +344,8 @@ namespace ATM
 
                 var result = myCommand.ExecuteNonQuery();
 
-                //check that the value has been correctly added :
-                Console.WriteLine("Rows updated: {0}", result);
+            //check that the value has been correctly updated :
+            Console.WriteLine("Rows updated: {0}", result);
 
                 databaseObject.CloseConnection();
                 AdminMenu();
@@ -370,8 +372,8 @@ namespace ATM
 
                 var result = myCommand.ExecuteNonQuery();
 
-                //check that the value has been correctly added :
-                Console.WriteLine("Rows updated: {0}", result);
+            //check that the value has been correctly updated :
+            Console.WriteLine("Rows updated: {0}", result);
 
                 databaseObject.CloseConnection();
                 AdminMenu();
@@ -402,6 +404,7 @@ namespace ATM
             }
 
             databaseObject.CloseConnection();
+            AdminMenu();
         }
 
         public void LogOutAdmin()
@@ -416,18 +419,18 @@ namespace ATM
         {
             databaseObject.OpenConnection();
 
-            Console.WriteLine("Please enter your GUID: ");
+            Console.Write("Please enter your GUID: ");
             string GUIDClient = Console.ReadLine();
-            Console.WriteLine("Please enter your PIN: ");
-            string PINClient = Console.ReadLine();
+            Console.Write("Please enter your PIN: ");
+            int PINClient = Convert.ToInt32(Console.ReadLine());
 
-            string query = "SELECT count(1) FROM clients WHERE GUID='" + GUIDClient + "' AND PIN='" + PINClient + "'";
+            string query = "SELECT EXISTS(SELECT 1 FROM clients WHERE GUID='" + GUIDClient + "' AND PIN=" + PINClient + ")";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
             var result = myCommand.ExecuteNonQuery();
 
-            //check that the value has been correctly added :
+            //check that the row has been correctly selected :
             Console.WriteLine("Rows selected: {0}", result);
 
             if (result == 1)
@@ -502,7 +505,7 @@ namespace ATM
 
             var result = myCommand.ExecuteNonQuery();
 
-            //check that the value has been correctly added :
+            //check that the value has been correctly updated :
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
@@ -521,7 +524,7 @@ namespace ATM
 
             var result = myCommand.ExecuteNonQuery();
 
-            //check that the value has been correctly added :
+            //check that the value has been correctly updated :
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
@@ -557,7 +560,7 @@ namespace ATM
 
             var result = myCommand.ExecuteNonQuery();
 
-            //check that the value has been correctly added :
+            //check that the value has been correctly updated :
             Console.WriteLine("Rows updated: {0}", result);
 
             databaseObject.CloseConnection();
