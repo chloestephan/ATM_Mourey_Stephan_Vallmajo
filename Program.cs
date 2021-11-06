@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Data.SQLite;
 
 namespace ATM
@@ -63,7 +64,8 @@ namespace ATM
             Console.WriteLine("|{0}|", AlignText(37, "3. Manage a client"));
             Console.WriteLine("|{0}|", AlignText(37, "4. Verify user transactions"));
             Console.WriteLine("|{0}|", AlignText(37, "5. View all clients"));
-            Console.WriteLine("|{0}|", AlignText(37, "6. Logout"));
+            Console.WriteLine("|{0}|", AlignText(37, "6. View messages from the clients"));
+            Console.WriteLine("|{0}|", AlignText(37, "7. Logout"));
             Console.WriteLine("|{0}|", AlignText(0, ""));
             DrawLine();
             Console.BackgroundColor = ConsoleColor.Black;
@@ -90,6 +92,9 @@ namespace ATM
                         GetAll();
                         break;
                     case 6:
+                        ViewMessages();
+                        break;
+                    case 7:
                         LogOutAdmin();
                         break;
                     default:
@@ -123,32 +128,38 @@ namespace ATM
         public void CreateClient()
         {
             string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked', 'nbrTries', 'moneyAmount') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked, @nbrTries, @moneyAmount)";
+            string queryAddCurrency = "INSERT INTO currencies ('GUID', 'currency') VALUES (@GUID, @currency)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+            SQLiteCommand myCommandAddCurrency = new SQLiteCommand(queryAddCurrency, databaseObject.myConnection);
 
             databaseObject.OpenConnection();
 
             //the GUID is generated randomly
-            var byteArray = new Guid("a8828ddf-ef22-4d36-935a-1c66ae86ebb3").ToByteArray();
-            string hex = BitConverter.ToString(byteArray).Replace("-", string.Empty);
 
-            myCommand.Parameters.AddWithValue("@GUID", hex);
+            Console.Write("Enter the GUID of the client: ");
+            string GUIDClient = Console.ReadLine();
+            //var GUID = Guid.NewGuid();
+            //string GUIDClient = GUID.ToString();
+            myCommand.Parameters.AddWithValue("@GUID", GUIDClient);
+            myCommandAddCurrency.Parameters.AddWithValue("@GUID", GUIDClient);
 
-            Console.Write("Enter the First Name of the client:");
+            Console.Write("Enter the First Name of the client: ");
             string FirstName = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@FirstName", FirstName);
 
-            Console.Write("Enter the Last Name of the client:");
+            Console.Write("Enter the Last Name of the client: ");
             string LastName = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@LastName", LastName);
 
-            Console.Write("Enter the PIN of the client:");
+            Console.Write("Enter the PIN of the client: ");
             string PINClient = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@PIN", PINClient);
 
-            Console.Write("Enter the Main Currency of the client:");
+            Console.Write("Enter the Main Currency of the client: ");
             string MainCurrency = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@MainCurrency", MainCurrency);
+            myCommandAddCurrency.Parameters.AddWithValue("@currency", MainCurrency);
 
             //we assume that we don't block a brand new client from the start: all clients start off as not blocked
             //false: not blocked; true: blocked
@@ -164,11 +175,13 @@ namespace ATM
             myCommand.Parameters.AddWithValue("@moneyAmount", moneyAmount);
 
             var result = myCommand.ExecuteNonQuery();
+            var resultAddCurrency = myCommandAddCurrency.ExecuteNonQuery();
 
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows added: {0}", result);
+            Console.WriteLine("Rows added in clients: {0}", result);
+            Console.WriteLine("Rows added in currencies: {0}", resultAddCurrency);
 
             AdminMenu();
         }
@@ -307,9 +320,34 @@ namespace ATM
 
         public void VerifyTransactions()
         {
-            //change value in the transactions database
-            //if verified : bool true ; if not verified : bool false
-            Console.WriteLine("This function isn't functional yet.");
+            string query = "SELECT * FROM transactions WHERE isVerified=0";
+
+            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+
+            databaseObject.OpenConnection();
+
+            SQLiteDataReader result = myCommand.ExecuteReader();
+
+            Console.WriteLine("List of the transactions yet to be verified: ");
+            if (result.HasRows)
+            {
+                while (result.Read())
+                {
+                    Console.WriteLine("Id of the transaction: {0} - Client's GUID: {1} - Type: {2} - Amount: {3} {4} - Date: {5} ", result["id"], result["GUID"], result["type"], result["amount"], result["currency"], result["date"]);
+                }
+            }
+
+            Console.Write("Please enter the ID of the transaction you would like to verify: ");
+            int id = Convert.ToInt32(Console.ReadLine());
+
+            string queryVerify = "UPDATE transactions SET isVerified=1 WHERE id='" + id +"'";
+            SQLiteCommand myCommandVerify = new SQLiteCommand(queryVerify, databaseObject.myConnection);
+            var resultVerify = myCommandVerify.ExecuteNonQuery();
+
+            Console.WriteLine("Rows updated: {0}", resultVerify);
+
+            databaseObject.CloseConnection();
+            AdminMenu();
         }
 
         public void BlockClient()
@@ -414,7 +452,7 @@ namespace ATM
                 {
                     //Console.WriteLine("{0}", resultBlocked["isBlocked"]);
                     int isBlocked = resultBlocked.GetInt32(0);
-                    if (isBlocked == 0 && nbrTries<3)
+                    if (isBlocked == 0 && nbrTries<4)
                     {
                         if (result.HasRows)
                         {
@@ -449,9 +487,9 @@ namespace ATM
 
             while (resultNbrTries.Read())
             {
-                Console.WriteLine("Number of tries: {0}", resultNbrTries["nbrTries"]);
+                //Console.WriteLine("Number of tries: {0}", resultNbrTries["nbrTries"]);
                 int nbrTries = resultNbrTries.GetInt32(0);
-                Console.WriteLine("Number of tries returned: {0}", nbrTries);
+                //Console.WriteLine("Number of tries returned: {0}", nbrTries);
                 return nbrTries;
             }
 
@@ -518,15 +556,47 @@ namespace ATM
             int amountToDeposit = Convert.ToInt32(Console.ReadLine());
 
             string query = "UPDATE clients SET moneyAmount=moneyAmount+'" + amountToDeposit + "' WHERE GUID= '" + GUIDClient + "'";
+            string queryAddTransactions = "INSERT INTO transactions ('type', 'date', 'GUID', 'amount', 'currency', 'isVerified') VALUES (@type, @date, @GUID, @amount, @currency, @isVerified)";
+            string queryGetCurrency = "SELECT MainCurrency FROM clients WHERE GUID='" + GUIDClient + "'";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+            SQLiteCommand myCommandAddTransactions = new SQLiteCommand(queryAddTransactions, databaseObject.myConnection);
+            SQLiteCommand myCommandGetCurrency = new SQLiteCommand(queryGetCurrency, databaseObject.myConnection);
+
+            //add the transaction to the listing
+
+            string type = "Deposit";
+            myCommandAddTransactions.Parameters.AddWithValue("@type", type);
+
+            DateTime date = DateTime.Now;
+            myCommandAddTransactions.Parameters.AddWithValue("@date", date);
+
+            myCommandAddTransactions.Parameters.AddWithValue("@GUID", GUIDClient);
+
+            myCommandAddTransactions.Parameters.AddWithValue("@amount", amountToDeposit);
+
+            SQLiteDataReader resultGetCurrency = myCommandGetCurrency.ExecuteReader();
+            if (resultGetCurrency.HasRows)
+            {
+                while (resultGetCurrency.Read())
+                {
+                    string currency = resultGetCurrency.GetString(0);
+                    myCommandAddTransactions.Parameters.AddWithValue("@currency", currency);
+                }
+            }
+
+            int isVerified = 0;
+            myCommandAddTransactions.Parameters.AddWithValue("@isVerified", isVerified);
 
             var result = myCommand.ExecuteNonQuery();
+            var resultAddTransaction = myCommandAddTransactions.ExecuteNonQuery();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows updated: {0}", result);
+            Console.WriteLine("Rows updated in clients: {0}", result);
+            Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
 
             databaseObject.CloseConnection();
+
             ClientMenu(GUIDClient);
         }
 
@@ -534,19 +604,51 @@ namespace ATM
         {
             databaseObject.OpenConnection();
 
-            Console.WriteLine("Please enter the amount of money you would like to withdraw: ");
-            double amountToWithdraw = double.Parse(Console.ReadLine());
+            Console.WriteLine("Please enter the amount of money you would like to deposit: ");
+            int amountToDeposit = Convert.ToInt32(Console.ReadLine());
 
-            string query = "UPDATE clients SET moneyAmount=moneyAmount-'" + amountToWithdraw + "' WHERE GUID= '" + GUIDClient + "'";
+            string query = "UPDATE clients SET moneyAmount=moneyAmount-'" + amountToDeposit + "' WHERE GUID= '" + GUIDClient + "'";
+            string queryAddTransactions = "INSERT INTO transactions ('type', 'date', 'GUID', 'amount', 'currency', 'isVerified') VALUES (@type, @date, @GUID, @amount, @currency, @isVerified)";
+            string queryGetCurrency = "SELECT MainCurrency FROM clients WHERE GUID='" + GUIDClient + "'";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+            SQLiteCommand myCommandAddTransactions = new SQLiteCommand(queryAddTransactions, databaseObject.myConnection);
+            SQLiteCommand myCommandGetCurrency = new SQLiteCommand(queryGetCurrency, databaseObject.myConnection);
+
+            //add the transaction to the listing
+
+            string type = "Withdraw";
+            myCommandAddTransactions.Parameters.AddWithValue("@type", type);
+
+            DateTime date = DateTime.Now;
+            myCommandAddTransactions.Parameters.AddWithValue("@date", date);
+
+            myCommandAddTransactions.Parameters.AddWithValue("@GUID", GUIDClient);
+
+            myCommandAddTransactions.Parameters.AddWithValue("@amount", amountToDeposit);
+
+            SQLiteDataReader resultGetCurrency = myCommandGetCurrency.ExecuteReader();
+            if (resultGetCurrency.HasRows)
+            {
+                while (resultGetCurrency.Read())
+                {
+                    string currency = resultGetCurrency.GetString(0);
+                    myCommandAddTransactions.Parameters.AddWithValue("@currency", currency);
+                }
+            }
+
+            int isVerified = 0;
+            myCommandAddTransactions.Parameters.AddWithValue("@isVerified", isVerified);
 
             var result = myCommand.ExecuteNonQuery();
+            var resultAddTransaction = myCommandAddTransactions.ExecuteNonQuery();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows updated: {0}", result);
+            Console.WriteLine("Rows updated in clients: {0}", result);
+            Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
 
             databaseObject.CloseConnection();
+
             ClientMenu(GUIDClient);
         }
 
@@ -644,8 +746,8 @@ namespace ATM
 
             databaseObject.CloseConnection();
 
-            //check that the value has been correctly added :
-            Console.WriteLine("Rows added: {0}", result);
+            //check that the value has been correctly updated :
+            Console.WriteLine("Rows updated: {0}", result);
 
         }
 
