@@ -309,6 +309,7 @@ namespace ATM
         {
             //change value in the transactions database
             //if verified : bool true ; if not verified : bool false
+            Console.WriteLine("This function isn't functional yet.");
         }
 
         public void BlockClient()
@@ -404,29 +405,27 @@ namespace ATM
             SQLiteDataReader result = myCommandLogin.ExecuteReader();
             var resultTries = myCommandGetAmountTries.ExecuteNonQuery();
             SQLiteDataReader resultBlocked = myCommandBlocked.ExecuteReader();
+            int nbrTries = CheckIfThreeTries(GUIDClient);
 
             //check if not blocked: blocked = by bank advisor or if more than 3 tries
             if (resultBlocked.HasRows)
             {
                 while (resultBlocked.Read())
                 {
-                    Console.WriteLine("{0}", resultBlocked["isBlocked"]);
+                    //Console.WriteLine("{0}", resultBlocked["isBlocked"]);
                     int isBlocked = resultBlocked.GetInt32(0);
-                    if (isBlocked == 0)
+                    if (isBlocked == 0 && nbrTries<3)
                     {
-                        while (resultTries < 3)
+                        if (result.HasRows)
                         {
-                            if (result.HasRows)
-                            {
-                                ClientMenu(GUIDClient);
-                            }
-                            else
-                            {
-                                Console.WriteLine("Wrong input. Please try again.");
-                                SQLiteDataReader updateTries = myCommandUpdateTries.ExecuteReader();
-                                resultTries++;
-                                LogInClient();
-                            }
+                            ClientMenu(GUIDClient);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Wrong input. Please try again.");
+                            SQLiteDataReader updateTries = myCommandUpdateTries.ExecuteReader();
+                            resultTries++;
+                            LogInClient();
                         }
                     }
                     else
@@ -435,9 +434,30 @@ namespace ATM
                     }
                 }
             }
+            databaseObject.CloseConnection();
+        }
 
+        public int CheckIfThreeTries(string GUIDClient)
+        {
+            databaseObject.OpenConnection();
+
+            string queryGetAmountTries = "SELECT nbrTries FROM clients WHERE GUID='" + GUIDClient + "'";
+
+            SQLiteCommand myCommandGetAmountTries = new SQLiteCommand(queryGetAmountTries, databaseObject.myConnection);
+
+            SQLiteDataReader resultNbrTries = myCommandGetAmountTries.ExecuteReader();
+
+            while (resultNbrTries.Read())
+            {
+                Console.WriteLine("Number of tries: {0}", resultNbrTries["nbrTries"]);
+                int nbrTries = resultNbrTries.GetInt32(0);
+                Console.WriteLine("Number of tries returned: {0}", nbrTries);
+                return nbrTries;
+            }
 
             databaseObject.CloseConnection();
+
+            return 0;
         }
 
         public void ClientMenu(string GUIDClient)
