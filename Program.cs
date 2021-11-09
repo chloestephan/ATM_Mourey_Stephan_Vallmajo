@@ -160,7 +160,7 @@ namespace ATM
             myCommandAddCurrency.Parameters.AddWithValue("@currency", MainCurrency);
 
             //we assume that we don't block a brand new client from the start: all clients start off as not blocked
-            //false: not blocked; true: blocked
+            //0: not blocked; 1: blocked
             bool isBlocked = false;
             myCommand.Parameters.AddWithValue("@isBlocked", isBlocked);
 
@@ -775,10 +775,6 @@ namespace ATM
                         //check that the value has been correctly added :
                         Console.WriteLine("Rows updated in clients: {0}", result);
                         Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
-
-                        databaseObject.CloseConnection();
-
-                        ClientMenu(GUIDClient);
                     }
                     else
                     {
@@ -787,6 +783,8 @@ namespace ATM
                 }
             }
 
+            databaseObject.CloseConnection();
+            ClientMenu(GUIDClient);
         }
 
         private void SendMoney(string GUIDClient)
@@ -976,7 +974,7 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            //Console.WriteLine("Rows added: {0}", result);
+            Console.WriteLine("Rows added in currencies: {0}", result);
         }
 
 
@@ -1010,7 +1008,7 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly updated :
-            //Console.WriteLine("Rows updated: {0}", result);
+            Console.WriteLine("Rows updated in clients: {0}", result);
 
         }
 
@@ -1036,7 +1034,7 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly updated :
-            //Console.WriteLine("Rows updated: {0}", result);
+            Console.WriteLine("Rows updated in messages: {0}", result);
             ClientMenu(GUIDClient);
         }
 
