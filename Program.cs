@@ -773,8 +773,8 @@ namespace ATM
                         var resultAddTransaction = myCommandAddTransactions.ExecuteNonQuery();
 
                         //check that the value has been correctly added :
-                        //Console.WriteLine("Rows updated in clients: {0}", result);
-                        //Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
+                        Console.WriteLine("Rows updated in clients: {0}", result);
+                        Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
 
                         databaseObject.CloseConnection();
 
@@ -934,10 +934,24 @@ namespace ATM
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
-            SQLiteDataReader result = myCommand.ExecuteReader();
+            var result = myCommand.ExecuteNonQuery();
 
             //check that the value has been correctly added :
-            //Console.WriteLine("The PIN has been updated: {0}", result["PIN"]);
+            Console.WriteLine("Rows updated in clients: {0}", result);
+
+            //return new PIN
+            string queryGetNewPin = "SELECT PIN FROM clients WHERE GUID= '" + GUIDClient + "'";
+            SQLiteCommand myCommandGetNewPin = new SQLiteCommand(queryGetNewPin, databaseObject.myConnection);
+
+            SQLiteDataReader resultGetNewPin = myCommandGetNewPin.ExecuteReader();
+
+            if (resultGetNewPin.HasRows)
+            {
+                while (resultGetNewPin.Read())
+                {
+                    Console.WriteLine("New PIN: {0}", resultGetNewPin["PIN"]);
+                }
+            }
 
             databaseObject.CloseConnection();
             ClientMenu(GUIDClient);
