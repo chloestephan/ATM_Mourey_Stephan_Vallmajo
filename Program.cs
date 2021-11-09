@@ -710,8 +710,8 @@ namespace ATM
             var resultAddTransaction = myCommandAddTransactions.ExecuteNonQuery();
 
             //check that the value has been correctly added :
-            //Console.WriteLine("Rows updated in clients: {0}", result);
-            //Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
+            Console.WriteLine("Rows updated in clients: {0}", result);
+            Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
 
             databaseObject.CloseConnection();
 
@@ -804,6 +804,7 @@ namespace ATM
             string queryCheckMainCurrencySender = "SELECT MainCurrency FROM clients WHERE GUID= '" + GUIDClient + "'";
             string queryCheckMainCurrencyReceiver = "SELECT MainCurrency FROM clients WHERE GUID= '" + GUIDReceiver + "'";
             string queryCheckMoneyAmount = "SELECT moneyAmount FROM clients WHERE GUID= '" + GUIDClient + "'";
+            string queryAddTransactions = "INSERT INTO transactions ('type', 'date', 'GUID', 'amount', 'currency', 'isVerified') VALUES (@type, @date, @GUID, @amount, @currency, @isVerified)";
 
             //check main currencies and check that they match
             SQLiteCommand myCommandMainCurrencySender = new SQLiteCommand(queryCheckMainCurrencySender, databaseObject.myConnection);
@@ -814,16 +815,12 @@ namespace ATM
 
             if (resultMainCurrencySender.HasRows)
             {
-                Console.WriteLine("ok");
                 if (resultMainCurrencyReceiver.HasRows)
                 {
-                    Console.WriteLine("ok 2");
                     while (resultMainCurrencySender.Read())
                     {
-                        Console.WriteLine("ok 3");
                         while (resultMainCurrencyReceiver.Read())
                         {
-                            Console.WriteLine("ok 4");
                             string MainCurrencySender = resultMainCurrencySender.GetString(0);
                             string MainCurrencyReceiver = resultMainCurrencyReceiver.GetString(0);
 
@@ -845,15 +842,41 @@ namespace ATM
                                             SQLiteCommand myCommandSendMoney = new SQLiteCommand(querySendMoney, databaseObject.myConnection);
                                             var resultSendMoney = myCommandSendMoney.ExecuteNonQuery();
 
-                                            //check that the value has been correctly update :
+                                            //check that the value has been correctly update
                                             Console.WriteLine("The money has been sent to the receiver: {0}", resultSendMoney);
 
                                             //remove money from the sender's account
                                             SQLiteCommand myCommandRemoveMoney = new SQLiteCommand(queryRemoveMoney, databaseObject.myConnection);
                                             var resultRemoveMoney = myCommandRemoveMoney.ExecuteNonQuery();
 
-                                            //check that the value has been correctly update :
+                                            //check that the value has been correctly update
                                             Console.WriteLine("The money has been removed from the sender's account: {0}", resultRemoveMoney);
+
+
+                                            //add the transaction to the transaction table
+                                            SQLiteCommand myCommandAddTransactions = new SQLiteCommand(queryAddTransactions, databaseObject.myConnection);
+
+                                            //add the transaction to the listing
+
+                                            string type = "Transfer";
+                                            myCommandAddTransactions.Parameters.AddWithValue("@type", type);
+
+                                            DateTime date = DateTime.Now;
+                                            myCommandAddTransactions.Parameters.AddWithValue("@date", date);
+
+                                            myCommandAddTransactions.Parameters.AddWithValue("@GUID", GUIDClient);
+
+                                            myCommandAddTransactions.Parameters.AddWithValue("@amount", amountToSend);
+
+                                            myCommandAddTransactions.Parameters.AddWithValue("@currency", MainCurrencySender);
+                                     
+                                            int isVerified = 0;
+                                            myCommandAddTransactions.Parameters.AddWithValue("@isVerified", isVerified);
+
+                                            var resultAddTransaction = myCommandAddTransactions.ExecuteNonQuery();
+
+                                            //check that the value has been correctly added :
+                                            Console.WriteLine("Rows added in transactions: {0}", resultAddTransaction);
                                         }
                                         else
                                         {
@@ -874,6 +897,9 @@ namespace ATM
                     }
                 }
             }
+
+            databaseObject.CloseConnection();
+            ClientMenu(GUIDClient);
         }
 
         private void ViewTotalMoney(string GUIDClient)
