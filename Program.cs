@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Data;
 using System.Data.SQLite;
+using Api;
 
 namespace ATM
 {
@@ -130,7 +130,7 @@ namespace ATM
         private void CreateClient()
         {
             string query = "INSERT INTO clients ('GUID', 'FirstName', 'LastName', 'PIN', 'MainCurrency', 'isBlocked', 'nbrTries', 'moneyAmount') VALUES (@GUID, @FirstName, @LastName, @PIN, @MainCurrency, @isBlocked, @nbrTries, @moneyAmount)";
-            string queryAddCurrency = "INSERT INTO currencies ('GUID', 'currency') VALUES (@GUID, @currency)";
+            string queryAddCurrency = "INSERT INTO clientsCurrencies ('GUID', 'currency') VALUES (@GUID, @currency)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
             SQLiteCommand myCommandAddCurrency = new SQLiteCommand(queryAddCurrency, databaseObject.myConnection);
@@ -179,7 +179,7 @@ namespace ATM
 
             //check that the value has been correctly added :
             Console.WriteLine("Rows added in clients: {0}", result);
-            Console.WriteLine("Rows added in currencies: {0}", resultAddCurrency);
+            Console.WriteLine("Rows added in clientsCurrencies: {0}", resultAddCurrency);
 
             AdminMenu();
         }
@@ -192,7 +192,7 @@ namespace ATM
             string GUIDtodelete = Console.ReadLine();
 
             string queryClient = "DELETE FROM clients WHERE GUID='" + GUIDtodelete + "'";
-            string queryCurrencies = "DELETE FROM currencies WHERE GUID='" + GUIDtodelete + "'";
+            string queryCurrencies = "DELETE FROM clientsCurrencies WHERE GUID='" + GUIDtodelete + "'";
 
             SQLiteCommand myCommandClient = new SQLiteCommand(queryClient, databaseObject.myConnection);
             SQLiteCommand myCommandCurrencies = new SQLiteCommand(queryCurrencies, databaseObject.myConnection);
@@ -217,6 +217,7 @@ namespace ATM
             Console.WriteLine("|{0}|", AlignText(37, "3. Add a currency for a client"));
             Console.WriteLine("|{0}|", AlignText(37, "4. Block a client"));
             Console.WriteLine("|{0}|", AlignText(37, "5. Unblock a client"));
+            Console.WriteLine("|{0}|", AlignText(37, "6.Back to menu"));
             Console.WriteLine("|{0}|", AlignText(0, ""));
             DrawLine();
             Console.BackgroundColor = ConsoleColor.Black;
@@ -241,6 +242,9 @@ namespace ATM
                         break;
                     case 5:
                         UnblockClient();
+                        break;
+                    case 6:
+                        AdminMenu();
                         break;
                     default:
                         Console.WriteLine("Incorrect choice, please try again.");
@@ -308,7 +312,7 @@ namespace ATM
 
         private void AddCurrency()
         {
-            string query = "INSERT INTO currencies ('GUID', 'currency') VALUES (@GUID, @currency)";
+            string query = "INSERT INTO clientsCurrencies ('GUID', 'currency') VALUES (@GUID, @currency)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
@@ -318,7 +322,7 @@ namespace ATM
             string GUID = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@GUID", GUID);
 
-            Console.Write("Enter the currency to add to the list of currencies: ");
+            Console.Write("Enter the currency to add to the list of currencies by writing the currency code: ");
             string currency = Console.ReadLine();
             myCommand.Parameters.AddWithValue("@currency", currency);
 
@@ -328,7 +332,7 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows added in currencies: {0}", result);
+            Console.WriteLine("Rows added in clientsCurrencies: {0}", result);
             AdminMenu();
         }
 
@@ -957,7 +961,7 @@ namespace ATM
 
         private void AddCurrencyClient(string GUIDClient)
         {
-            string query = "INSERT INTO currencies ('GUID', 'currency') VALUES (@GUID, @currency)";
+            string query = "INSERT INTO clientsCurrencies ('GUID', 'currency') VALUES (@GUID, @currency)";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
 
@@ -974,7 +978,7 @@ namespace ATM
             databaseObject.CloseConnection();
 
             //check that the value has been correctly added :
-            Console.WriteLine("Rows added in currencies: {0}", result);
+            Console.WriteLine("Rows added in clientsCurrencies: {0}", result);
         }
 
 
@@ -982,7 +986,8 @@ namespace ATM
         {
             databaseObject.OpenConnection();
 
-            string queryCurrencies = "SELECT currency FROM currencies WHERE GUID= '" + GUIDClient + "'";
+            //set the new main currency
+            string queryCurrencies = "SELECT currency FROM clientsCurrencies WHERE GUID= '" + GUIDClient + "'";
 
             SQLiteCommand myCommandCurrencies = new SQLiteCommand(queryCurrencies, databaseObject.myConnection);
 
@@ -997,18 +1002,74 @@ namespace ATM
                     Console.WriteLine("{0}", resultCurrencies["currency"]);
                 }
             }
+            else
+            {
+                Console.WriteLine("Error");
+            }
             string newMainCurrency = Console.ReadLine();
 
-            string query = "UPDATE clients SET MainCurrency='" + newMainCurrency + "' WHERE GUID= '" + GUIDClient + "'";
+            string queryUpdateMainCurrency = "UPDATE clients SET MainCurrency='" + newMainCurrency + "' WHERE GUID='" + GUIDClient + "'";
 
-            SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
+            SQLiteCommand myCommandUpdateMainCurrency = new SQLiteCommand(queryUpdateMainCurrency, databaseObject.myConnection);
 
-            var result = myCommand.ExecuteNonQuery();
-
-            databaseObject.CloseConnection();
+            var result = myCommandUpdateMainCurrency.ExecuteNonQuery();
 
             //check that the value has been correctly updated :
             Console.WriteLine("Rows updated in clients: {0}", result);
+
+            /*
+            databaseObject.CloseConnection();
+
+            databaseObject.OpenConnection();
+
+            //update the amount of the bank account from the new currency's rate
+            string queryMainCurrency = "SELECT MainCurrency FROM clients WHERE GUID='" + GUIDClient + "'";
+
+            SQLiteCommand myCommandGetNewMainCurrency = new SQLiteCommand(queryMainCurrency, databaseObject.myConnection);
+
+            SQLiteDataReader mainCurrency = myCommandGetNewMainCurrency.ExecuteReader();
+
+            string queryRate = "SELECT rate FROM currencies WHERE currencyCode='" + mainCurrency + "'";
+
+            if (mainCurrency.HasRows)
+            {
+                while (mainCurrency.Read())
+                {
+                    SQLiteCommand myCommandRate = new SQLiteCommand(queryRate, databaseObject.myConnection);
+
+                    SQLiteDataReader Rate = myCommandRate.ExecuteReader();
+
+                    string queryAmount = "UPDATE clients SET moneyAmount=moneyAmount*'" + Rate + "'";
+                    if (Rate.HasRows)
+                    {
+                        while (Rate.Read())
+                        {
+                            SQLiteCommand myCommandNewAmount = new SQLiteCommand(queryAmount, databaseObject.myConnection);
+
+                            var resultNewAmount = myCommandNewAmount.ExecuteNonQuery();
+
+                            databaseObject.CloseConnection();
+
+                            //check that the value has been correctly update :
+                            Console.WriteLine("Rows updated in clients: {0}", resultNewAmount);
+
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error 1.");
+                    }
+
+                }
+
+            }
+            else
+            {
+                Console.WriteLine("Error 2");
+            }*/
+
+            databaseObject.CloseConnection();
+            return;
 
         }
 
@@ -1041,7 +1102,7 @@ namespace ATM
         private void AboutClient(string GUIDClient)
         {
             string query = "SELECT GUID, MainCurrency FROM clients WHERE GUID= '" + GUIDClient + "'";
-            string queryCurrencies = "SELECT currency FROM currencies WHERE GUID= '" + GUIDClient + "'";
+            string queryCurrencies = "SELECT currency FROM clientsCurrencies WHERE GUID= '" + GUIDClient + "'";
 
             SQLiteCommand myCommand = new SQLiteCommand(query, databaseObject.myConnection);
             SQLiteCommand myCommandCurrencies = new SQLiteCommand(queryCurrencies, databaseObject.myConnection);
@@ -1116,10 +1177,25 @@ namespace ATM
             Console.BackgroundColor = ConsoleColor.Black;
         }
 
+        public void updateRates()
+        {
+            var data = ApiConnection.ApiFetch();
+
+            //check that the API returns the proper data
+            //Console.Write(data);
+
+            databaseObject.OpenConnection();
+
+            //update the rates in the currencies database table
+
+            databaseObject.CloseConnection();
+
+        }
 
         static void Main(string[] args)
         {
             Program obj = new Program();
+            obj.updateRates();
             obj.MainMenu();
         }
     }
